@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Platform {
+  EBAY
+  IMMOSCOUT
+  IMMOWELT
+  WG_GESUCHT
+}
+
+model Filter {
+  id              String    @id @default(cuid())
+  name            String
+  city            String
+  address         String?
+  radiusKm        Float?    @map("radius_km")
+  minPrice        Int?      @map("min_price")
+  maxPrice        Int?      @map("max_price")
+  minRooms        Float?    @map("min_rooms")
+  maxRooms        Float?    @map("max_rooms")
+  minSizeM2       Float?    @map("min_size_m2")
+  platforms       Platform[] @default([EBAY])
+  isActive        Boolean   @default(true) @map("is_active")
+  whatsappNumber  String?   @map("whatsapp_number")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  matches Match[]
+
+  @@map("filters")
+}
+
+model Listing {
+  id          String    @id @default(cuid())
+  platform    Platform
+  externalId  String    @map("external_id")
+  title       String
+  price       Float?
+  rooms       Float?
+  sizeM2      Float?    @map("size_m2")
+  address     String?
+  city        String?
+  lat         Float?
+  lng         Float?
+  url         String
+  images      String[]  @default([])
+  firstSeenAt DateTime  @default(now()) @map("first_seen_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  isNotified  Boolean   @default(false) @map("is_notified")
+
+  matches Match[]
+
+  @@unique([platform, externalId])
+  @@map("listings")
+}
+
+model Match {
+  filterId    String   @map("filter_id")
+  listingId   String   @map("listing_id")
+  notifiedAt  DateTime? @map("notified_at")
+
+  filter  Filter  @relation(fields: [filterId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([filterId, listingId])
+  @@map("matches")
+}
