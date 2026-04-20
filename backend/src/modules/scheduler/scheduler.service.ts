@@ -8,7 +8,7 @@ import { Platform } from '@prisma/client';
 
 /**
  * Her 2 saatte bir (0. dakikada) scraping + matching + WhatsApp bildirimi.
- * Cron: 0 */2 * * * = saat 0, 2, 4, 6, ...
+ * Cron: "0 *-/2 * * *" = jede 2. Stunde
  */
 @Injectable()
 export class SchedulerService {
