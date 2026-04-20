@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as twilio from 'twilio';
@@ -9,6 +9,7 @@ import * as twilio from 'twilio';
  */
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
   private twilioClient: twilio.Twilio | null = null;
   private fromNumber: string = '';
 
@@ -45,15 +46,19 @@ export class NotificationsService {
         sent++;
       }
     }
+    this.logger.log(`${sent} WhatsApp-Nachrichten gesendet`);
     return sent;
   }
 
-  private formatListingMessage(listing: { title: string; price: number | null; url: string; city: string | null }, filterName: string): string {
-    const price = listing.price != null ? `${listing.price}€` : '?';
+  private formatListingMessage(listing: { title: string; price: number | null; url: string; city: string | null; address: string | null }, filterName: string): string {
+    const price = listing.price != null ? `${listing.price} €` : 'Preis unbekannt';
+    const location = listing.address ?? listing.city ?? '—';
     return [
-      '🏠 *Yeni İlan* — eBay Kleinanzeigen',
+      '🏠 *Neue Wohnung* — Kleinanzeigen',
       '',
-      `📍 ${listing.city ?? '—'}`,
+      `*${listing.title}*`,
+      '',
+      `📍 ${location}`,
       `💶 ${price}`,
       `🔗 ${listing.url}`,
       '',
@@ -70,7 +75,8 @@ export class NotificationsService {
         body,
       });
       return true;
-    } catch {
+    } catch (err) {
+      this.logger.error(`WhatsApp-Fehler an ${to}: ${err}`);
       return false;
     }
   }

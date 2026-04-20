@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { FiltersService } from '../filters/filters.service';
 import { EbayScraperService } from '../scrapers/ebay.scraper.service';
@@ -6,12 +6,10 @@ import { MatcherService } from '../matcher/matcher.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Platform } from '@prisma/client';
 
-/**
- * Her 2 saatte bir (0. dakikada) scraping + matching + WhatsApp bildirimi.
- * Cron: "0 *-/2 * * *" = jede 2. Stunde
- */
 @Injectable()
 export class SchedulerService {
+  private readonly logger = new Logger(SchedulerService.name);
+
   constructor(
     private readonly filters: FiltersService,
     private readonly ebayScraper: EbayScraperService,
@@ -21,12 +19,19 @@ export class SchedulerService {
 
   @Cron('0 */2 * * *')
   async handleScrapeAndNotify() {
+    this.logger.log('Scraping gestartet...');
     const activeFilters = await this.filters.findActive();
     for (const filter of activeFilters) {
       if (!filter.platforms.includes(Platform.EBAY)) continue;
       await this.ebayScraper.fetchAndUpsert(filter);
     }
+
+    this.logger.log('Matching gestartet...');
     await this.matcher.matchNewListings();
+
+    this.logger.log('Benachrichtigungen gestartet...');
     await this.notifications.sendPendingMatches();
+
+    this.logger.log('Durchlauf abgeschlossen.');
   }
 }

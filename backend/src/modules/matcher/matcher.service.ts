@@ -1,19 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Platform } from '@prisma/client';
 
-/**
- * Yeni/güncel listing'leri aktif filtrelerle eşleştirir ve matches tablosuna yazar.
- * Idempotent: (filter_id, listing_id) unique olduğu için aynı çift tekrar eklenmez.
- */
 @Injectable()
 export class MatcherService {
+  private readonly logger = new Logger(MatcherService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Son scrape turunda eklenen/güncellenen listing'ler için match oluşturur.
-   * Şimdilik basit: tüm EBAY listing'leri, EBAY içeren filtrelerle kontrol edilir.
-   */
   async matchNewListings(): Promise<number> {
     const activeFilters = await this.prisma.filter.findMany({
       where: { isActive: true, platforms: { has: Platform.EBAY } },
@@ -34,10 +28,11 @@ export class MatcherService {
           });
           created++;
         } catch {
-          // unique violation = zaten var, skip
+          // Unique-Verletzung = bereits vorhanden, überspringen
         }
       }
     }
+    this.logger.log(`${created} neue Treffer gefunden`);
     return created;
   }
 
