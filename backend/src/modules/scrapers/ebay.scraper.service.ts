@@ -4,6 +4,7 @@ import { chromium } from 'playwright';
 import * as cheerio from 'cheerio';
 import { ListingsService } from '../listings/listings.service';
 import { Platform, Filter } from '@prisma/client';
+import { normalizeCity } from '../../utils/city.util';
 
 export interface ScraperResult {
   externalId: string;
@@ -61,7 +62,7 @@ export class EbayScraperService {
 
   private buildSearchUrl(filter: Filter): string {
     const base = 'https://www.kleinanzeigen.de/s-wohnungen-suche';
-    const city = encodeURIComponent(filter.city.toLowerCase().replace(/\s+/g, '-'));
+    const city = encodeURIComponent(normalizeCity(filter.city).replace(/\s+/g, '-'));
 
     const params = new URLSearchParams();
     params.set('categoryId', '203');

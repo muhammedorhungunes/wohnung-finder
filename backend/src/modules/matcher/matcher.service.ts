@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Platform } from '@prisma/client';
+import { normalizeCity } from '../../utils/city.util';
 
 type FilterRow = {
   id: string;
@@ -58,7 +59,7 @@ export class MatcherService {
 
   private matchesFilter(listing: ListingRow, filter: FilterRow): boolean {
     if (filter.city && listing.city) {
-      if (!listing.city.toLowerCase().includes(filter.city.toLowerCase())) return false;
+      if (!normalizeCity(listing.city).includes(normalizeCity(filter.city))) return false;
     }
     if (listing.price != null) {
       if (filter.minPrice != null && listing.price < filter.minPrice) return false;

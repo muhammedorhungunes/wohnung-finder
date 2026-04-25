@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Platform } from '@prisma/client';
+import { normalizeCity } from '../../utils/city.util';
 
 @Injectable()
 export class FiltersService {
@@ -34,13 +35,17 @@ export class FiltersService {
     return this.prisma.filter.create({
       data: {
         ...data,
+        city: normalizeCity(data.city),
         platforms: data.platforms ?? [Platform.EBAY],
       },
     });
   }
 
   async update(id: string, data: Partial<Parameters<FiltersService['create']>[0]>) {
-    return this.prisma.filter.update({ where: { id }, data });
+    return this.prisma.filter.update({
+      where: { id },
+      data: { ...data, ...(data.city ? { city: normalizeCity(data.city) } : {}) },
+    });
   }
 
   async toggleActive(id: string) {
