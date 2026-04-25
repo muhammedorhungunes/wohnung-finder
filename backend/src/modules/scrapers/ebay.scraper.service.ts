@@ -133,16 +133,9 @@ export class EbayScraperService {
         const title = item.find('h2 a.ellipsis').text().trim();
         if (!title) return;
 
-        // Preis aus JSON-LD oder Text
-        const jsonLd = item.find('script[type="application/ld+json"]').first().html() ?? '';
-        let price: number | null = null;
-        try {
-          const data = JSON.parse(jsonLd);
-          const priceText = item.find('.aditem-main--middle--price-shipping--price').text().trim();
-          price = this.parsePrice(priceText);
-        } catch {
-          price = null;
-        }
+        // Preis aus Preisfeld
+        const priceText = item.find('.aditem-main--middle--price-shipping--price').text().trim();
+        const price = this.parsePrice(priceText);
 
         // Adresse (PLZ + Stadtteil)
         const address = item.find('.aditem-main--top--left').text().replace(/\s+/g, ' ').trim() || null;
@@ -151,10 +144,10 @@ export class EbayScraperService {
         const imgSrc = item.find('img').first().attr('src') ?? '';
         const images = imgSrc ? [imgSrc] : [];
 
-        // Beschreibung für Zimmer/m²
-        const descText = item.find('.aditem-main--middle--description').text();
-        const rooms = this.parseRooms(descText);
-        const sizeM2 = this.parseSizeM2(descText);
+        // Zimmer/m² aus Titel + Beschreibung kombiniert parsen
+        const searchText = `${title} ${item.find('.aditem-main--middle--description').text()}`;
+        const rooms = this.parseRooms(searchText);
+        const sizeM2 = this.parseSizeM2(searchText);
 
         results.push({
           externalId,
@@ -181,13 +174,17 @@ export class EbayScraperService {
   }
 
   private parseRooms(text: string): number | null {
-    const match = text.match(/(\d+[,.]?\d*)\s*Zimmer/i);
+    // Einzimmerwohnung / Einzimmer-Appartement
+    if (/\bEinzimmer/i.test(text)) return 1;
+    // Matches: "2 Zimmer", "2-Zimmer", "2,5 Zimmer", "2 Zi.", "2 ZKB", "2ZKB"
+    const match = text.match(/(\d+[,.]?\d*)[\s-]*(Zimmer|Zi\.|ZKB)/i);
     if (!match) return null;
     return parseFloat(match[1].replace(',', '.'));
   }
 
   private parseSizeM2(text: string): number | null {
-    const match = text.match(/(\d+[,.]?\d*)\s*m²/i);
+    // Matches: "65 m²", "65m²", "65 qm", "65qm", "65 m2"
+    const match = text.match(/(\d+[,.]?\d*)\s*(m²|qm|m2)/i);
     if (!match) return null;
     return parseFloat(match[1].replace(',', '.'));
   }
