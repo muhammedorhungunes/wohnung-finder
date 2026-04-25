@@ -27,7 +27,7 @@ model Filter {
   minSizeM2       Float?    @map("min_size_m2")
   platforms       Platform[] @default([EBAY])
   isActive        Boolean   @default(true) @map("is_active")
-  whatsappNumber  String?   @map("whatsapp_number")
+  email           String?
   createdAt       DateTime  @default(now()) @map("created_at")
 
   matches Match[]
@@ -62,6 +62,7 @@ model Listing {
 model Match {
   filterId    String   @map("filter_id")
   listingId   String   @map("listing_id")
+  score       Float?
   notifiedAt  DateTime? @map("notified_at")
 
   filter  Filter  @relation(fields: [filterId], references: [id], onDelete: Cascade)

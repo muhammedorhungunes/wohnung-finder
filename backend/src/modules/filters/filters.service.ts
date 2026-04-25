@@ -29,7 +29,7 @@ export class FiltersService {
     maxRooms?: number;
     minSizeM2?: number;
     platforms?: Platform[];
-    whatsappNumber?: string;
+    email?: string;
   }) {
     return this.prisma.filter.create({
       data: {
