@@ -11,8 +11,6 @@ export interface UpsertListingInput {
   sizeM2?: number | null;
   address?: string | null;
   city?: string | null;
-  lat?: number | null;
-  lng?: number | null;
   url: string;
   images?: string[];
 }
@@ -50,8 +48,6 @@ export class ListingsService {
         sizeM2: input.sizeM2 ?? undefined,
         address: input.address ?? undefined,
         city: input.city ?? undefined,
-        lat: input.lat ?? undefined,
-        lng: input.lng ?? undefined,
         url: input.url,
         images: input.images ?? [],
       },
@@ -62,8 +58,6 @@ export class ListingsService {
         sizeM2: input.sizeM2 ?? undefined,
         address: input.address ?? undefined,
         city: input.city ?? undefined,
-        lat: input.lat ?? undefined,
-        lng: input.lng ?? undefined,
         url: input.url,
         images: input.images ?? [],
       },

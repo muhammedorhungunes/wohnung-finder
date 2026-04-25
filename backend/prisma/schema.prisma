@@ -45,13 +45,10 @@ model Listing {
   sizeM2      Float?    @map("size_m2")
   address     String?
   city        String?
-  lat         Float?
-  lng         Float?
   url         String
   images      String[]  @default([])
   firstSeenAt DateTime  @default(now()) @map("first_seen_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
-  isNotified  Boolean   @default(false) @map("is_notified")
 
   matches Match[]
 

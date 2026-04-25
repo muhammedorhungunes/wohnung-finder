@@ -62,24 +62,22 @@ export class EbayScraperService {
 
   private buildSearchUrl(filter: Filter): string {
     const base = 'https://www.kleinanzeigen.de/s-wohnungen-suche';
-    const city = encodeURIComponent(normalizeCity(filter.city).replace(/\s+/g, '-'));
+    const city = normalizeCity(filter.city).replace(/\s+/g, '-');
+    const radius = filter.radiusKm ? `umkreis-${filter.radiusKm}km/` : '';
 
     const params = new URLSearchParams();
     params.set('categoryId', '203');
 
-    if (filter.minPrice || filter.maxPrice) {
-      const min = filter.minPrice ?? '';
-      const max = filter.maxPrice ?? '';
+    if (filter.minPrice != null || filter.maxPrice != null) {
       params.set('priceType', 'FIXED');
-      params.set('minPrice', String(min));
-      params.set('maxPrice', String(max));
+      if (filter.minPrice != null) params.set('minPrice', String(filter.minPrice));
+      if (filter.maxPrice != null) params.set('maxPrice', String(filter.maxPrice));
     }
 
-    if (filter.minRooms) params.set('minRooms', String(filter.minRooms));
-    if (filter.maxRooms) params.set('maxRooms', String(filter.maxRooms));
-    if (filter.radiusKm) params.set('radius', String(filter.radiusKm));
+    if (filter.minRooms != null) params.set('minRooms', String(filter.minRooms));
+    if (filter.maxRooms != null) params.set('maxRooms', String(filter.maxRooms));
 
-    return `${base}/${city}/k0?${params.toString()}`;
+    return `${base}/${radius}${encodeURIComponent(city)}/k0?${params.toString()}`;
   }
 
   private async loadPage(url: string): Promise<string> {
