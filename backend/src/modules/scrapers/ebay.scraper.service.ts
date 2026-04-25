@@ -46,7 +46,7 @@ export class EbayScraperService {
       })),
     );
 
-    this.logger.log(`${results.length} Inserate für Filter "${filter.name}" verarbeitet`);
+    this.logger.log(`${results.length} listings processed for filter "${filter.name}"`);
     return results.length;
   }
 
@@ -56,7 +56,7 @@ export class EbayScraperService {
 
     const html = await this.loadPage(url);
     const results = this.parseListings(html, filter.city);
-    this.logger.debug(`Geparste Inserate: ${results.length}`);
+    this.logger.debug(`Parsed listings: ${results.length}`);
     return results;
   }
 
@@ -93,11 +93,11 @@ export class EbayScraperService {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
 
-      // Cookie-Banner schließen falls vorhanden
+      // Close cookie banner if present
       try {
         await page.click('#gdpr-banner-accept', { timeout: 3_000 });
       } catch {
-        // Kein Banner — weiter
+        // No banner — continue
       }
 
       await page.waitForSelector('article.aditem', { timeout: 10_000 }).catch(() => {});
@@ -118,32 +118,32 @@ export class EbayScraperService {
       try {
         const item = $(el);
 
-        // ID + URL aus Link
+        // Extract ID and URL from link
         const link = item.find('a[href*="/s-anzeige/"]').first();
         const href = link.attr('href') ?? '';
-        // Format: /s-anzeige/titel/ID-203-STADTID
+        // Format: /s-anzeige/title/ID-203-CITYID
         const idMatch = href.match(/\/(\d+)-\d+-\d+$/);
         if (!idMatch) return;
 
         const externalId = idMatch[1];
         const url = `https://www.kleinanzeigen.de${href}`;
 
-        // Titel
+        // Title
         const title = item.find('h2 a.ellipsis').text().trim();
         if (!title) return;
 
-        // Preis aus Preisfeld
+        // Price
         const priceText = item.find('.aditem-main--middle--price-shipping--price').text().trim();
         const price = this.parsePrice(priceText);
 
-        // Adresse (PLZ + Stadtteil)
+        // Address (postal code + district)
         const address = item.find('.aditem-main--top--left').text().replace(/\s+/g, ' ').trim() || null;
 
-        // Bild
+        // Image
         const imgSrc = item.find('img').first().attr('src') ?? '';
         const images = imgSrc ? [imgSrc] : [];
 
-        // Zimmer/m² aus Titel + Beschreibung kombiniert parsen
+        // Parse rooms/m² from title + description combined
         const searchText = `${title} ${item.find('.aditem-main--middle--description').text()}`;
         const rooms = this.parseRooms(searchText);
         const sizeM2 = this.parseSizeM2(searchText);
@@ -160,7 +160,7 @@ export class EbayScraperService {
           images,
         });
       } catch (err) {
-        this.logger.warn(`Inserat konnte nicht geparst werden: ${err}`);
+        this.logger.warn(`Failed to parse listing: ${err}`);
       }
     });
 
@@ -173,9 +173,9 @@ export class EbayScraperService {
   }
 
   private parseRooms(text: string): number | null {
-    // Einzimmerwohnung / Einzimmer-Appartement
+    // "Einzimmerwohnung" = German compound for single-room apartment
     if (/\bEinzimmer/i.test(text)) return 1;
-    // Matches: "2 Zimmer", "2-Zimmer", "2,5 Zimmer", "2 Zi.", "2 ZKB", "2ZKB"
+    // Matches: "2 Zimmer", "2-Zimmer", "2.5 Zimmer", "2 Zi.", "2 ZKB"
     const match = text.match(/(\d+[,.]?\d*)[\s-]*(Zimmer|Zi\.|ZKB)/i);
     if (!match) return null;
     return parseFloat(match[1].replace(',', '.'));

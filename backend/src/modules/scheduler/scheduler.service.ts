@@ -19,19 +19,19 @@ export class SchedulerService {
 
   @Cron('0 */2 * * *')
   async handleScrapeAndNotify() {
-    this.logger.log('Scraping gestartet...');
+    this.logger.log('Scraping started...');
     const activeFilters = await this.filters.findActive();
     for (const filter of activeFilters) {
       if (!filter.platforms.includes(Platform.EBAY)) continue;
       await this.ebayScraper.fetchAndUpsert(filter);
     }
 
-    this.logger.log('Matching gestartet...');
+    this.logger.log('Matching started...');
     await this.matcher.matchNewListings();
 
-    this.logger.log('Benachrichtigungen gestartet...');
+    this.logger.log('Sending notifications...');
     await this.notifications.sendPendingMatches();
 
-    this.logger.log('Durchlauf abgeschlossen.');
+    this.logger.log('Run completed.');
   }
 }

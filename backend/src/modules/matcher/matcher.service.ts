@@ -49,11 +49,11 @@ export class MatcherService {
           });
           created++;
         } catch {
-          // Unique-Verletzung = bereits vorhanden
+          // Unique constraint violation — already exists
         }
       }
     }
-    this.logger.log(`${created} neue Treffer gefunden`);
+    this.logger.log(`${created} new matches found`);
     return created;
   }
 
@@ -75,11 +75,11 @@ export class MatcherService {
     return true;
   }
 
-  // Score 0–100: höher = besser passend
+  // Score 0–100: higher = better match
   private scoreListingForFilter(listing: ListingRow, filter: FilterRow): number {
     let score = 0;
 
-    // Preis (0–40 Punkte): je günstiger relativ zum Budget, desto mehr Punkte
+    // Price (0–40 pts): cheaper relative to budget = higher score
     if (listing.price == null) {
       score += 20;
     } else if (filter.maxPrice != null) {
@@ -91,7 +91,7 @@ export class MatcherService {
       score += 20;
     }
 
-    // Zimmer (0–30 Punkte): Mitte des Bereichs = volle Punkte
+    // Rooms (0–30 pts): closest to midpoint of range = full score
     if (listing.rooms == null || (filter.minRooms == null && filter.maxRooms == null)) {
       score += 15;
     } else {
@@ -103,7 +103,7 @@ export class MatcherService {
       score += Math.round(30 * Math.max(0, 1 - distance / half));
     }
 
-    // Aktualität (0–30 Punkte)
+    // Recency (0–30 pts)
     const ageHours = (Date.now() - listing.firstSeenAt.getTime()) / 3_600_000;
     if (ageHours < 24) score += 30;
     else if (ageHours < 48) score += 20;
