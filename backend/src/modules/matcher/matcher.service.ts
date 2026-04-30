@@ -2,10 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Platform } from '@prisma/client';
 import { normalizeCity } from '../../utils/city.util';
+import { geocodeQuery, haversineKm, extractPostalCode } from '../../utils/geocode.util';
 
 type FilterRow = {
   id: string;
   city: string;
+  radiusKm: number | null;
   minPrice: number | null;
   maxPrice: number | null;
   minRooms: number | null;
@@ -16,6 +18,7 @@ type FilterRow = {
 type ListingRow = {
   id: string;
   city: string | null;
+  address: string | null;
   price: number | null;
   rooms: number | null;
   sizeM2: number | null;
@@ -38,10 +41,12 @@ export class MatcherService {
       take: 500,
     });
 
+    await this.prewarmGeocodeCache(activeFilters, listings);
+
     let created = 0;
     for (const filter of activeFilters) {
       for (const listing of listings) {
-        if (!this.matchesFilter(listing, filter)) continue;
+        if (!(await this.matchesFilter(listing, filter))) continue;
         const score = this.scoreListingForFilter(listing, filter);
         try {
           await this.prisma.match.create({
@@ -57,10 +62,33 @@ export class MatcherService {
     return created;
   }
 
-  private matchesFilter(listing: ListingRow, filter: FilterRow): boolean {
-    if (filter.city && listing.city) {
-      if (!normalizeCity(listing.city).includes(normalizeCity(filter.city))) return false;
+  private async prewarmGeocodeCache(filters: FilterRow[], listings: ListingRow[]): Promise<void> {
+    const filtersWithRadius = filters.filter((f) => f.radiusKm != null);
+    if (filtersWithRadius.length === 0) return;
+
+    const queries = new Set<string>();
+    for (const f of filtersWithRadius) queries.add(`${f.city}, Germany`);
+    for (const l of listings) {
+      const plz = l.address ? extractPostalCode(l.address) : null;
+      queries.add(plz ? `${plz} Germany` : `${l.city ?? ''}, Germany`);
     }
+
+    this.logger.log(`Geocoding ${queries.size} locations for radius check...`);
+    for (const q of queries) await geocodeQuery(q);
+    this.logger.log('Geocoding complete.');
+  }
+
+  private async matchesFilter(listing: ListingRow, filter: FilterRow): Promise<boolean> {
+    // Radius check supersedes city-name check when radiusKm is set
+    if (filter.radiusKm != null) {
+      const withinRadius = await this.isWithinRadius(listing, filter);
+      if (!withinRadius) return false;
+    } else {
+      if (filter.city && listing.city) {
+        if (!normalizeCity(listing.city).includes(normalizeCity(filter.city))) return false;
+      }
+    }
+
     if (listing.price != null) {
       if (filter.minPrice != null && listing.price < filter.minPrice) return false;
       if (filter.maxPrice != null && listing.price > filter.maxPrice) return false;
@@ -73,6 +101,20 @@ export class MatcherService {
       if (listing.sizeM2 < filter.minSizeM2) return false;
     }
     return true;
+  }
+
+  private async isWithinRadius(listing: ListingRow, filter: FilterRow): Promise<boolean> {
+    const filterCoords = await geocodeQuery(`${filter.city}, Germany`);
+    if (!filterCoords) return true; // geocoding failed — don't discard listing
+
+    const postalCode = listing.address ? extractPostalCode(listing.address) : null;
+    const listingQuery = postalCode ? `${postalCode} Germany` : `${listing.city ?? filter.city}, Germany`;
+    const listingCoords = await geocodeQuery(listingQuery);
+
+    if (!listingCoords) return true; // geocoding failed — don't discard listing
+
+    const distKm = haversineKm(filterCoords, listingCoords);
+    return distKm <= filter.radiusKm!;
   }
 
   // Score 0–100: higher = better match
