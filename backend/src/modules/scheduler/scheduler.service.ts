@@ -17,20 +17,32 @@ export class SchedulerService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  @Cron('0 */2 * * *')
+  @Cron('0 */4 * * *')
   async handleScrapeAndNotify() {
     this.logger.log('Scraping started...');
     const activeFilters = await this.filters.findActive();
     for (const filter of activeFilters) {
       if (!filter.platforms.includes(Platform.EBAY)) continue;
-      await this.ebayScraper.fetchAndUpsert(filter);
+      try {
+        await this.ebayScraper.fetchAndUpsert(filter);
+      } catch (err) {
+        this.logger.error(`Scraping failed for filter "${filter.name}": ${err}`);
+      }
     }
 
     this.logger.log('Matching started...');
-    await this.matcher.matchNewListings();
+    try {
+      await this.matcher.matchNewListings();
+    } catch (err) {
+      this.logger.error(`Matching failed: ${err}`);
+    }
 
     this.logger.log('Sending notifications...');
-    await this.notifications.sendPendingMatches();
+    try {
+      await this.notifications.sendPendingMatches();
+    } catch (err) {
+      this.logger.error(`Notifications failed: ${err}`);
+    }
 
     this.logger.log('Run completed.');
   }

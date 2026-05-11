@@ -57,11 +57,13 @@ export class NotificationsService {
 
       const ok = await this.sendDigestEmail(filter.email, filter.name, top);
       if (ok) {
-        for (const m of top) {
-          await this.prisma.match.update({
-            where: { filterId_listingId: { filterId: m.filterId, listingId: m.listingId } },
+        try {
+          await this.prisma.match.updateMany({
+            where: { filterId: filter.id, notifiedAt: null },
             data: { notifiedAt: new Date() },
           });
+        } catch (err) {
+          this.logger.error(`Failed to mark matches as notified for filter "${filter.name}": ${err}`);
         }
         sent += top.length;
       }

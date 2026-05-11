@@ -13,10 +13,12 @@ type FilterRow = {
   minRooms: number | null;
   maxRooms: number | null;
   minSizeM2: number | null;
+  platforms: Platform[];
 };
 
 type ListingRow = {
   id: string;
+  platform: Platform;
   city: string | null;
   address: string | null;
   price: number | null;
@@ -33,10 +35,9 @@ export class MatcherService {
 
   async matchNewListings(): Promise<number> {
     const activeFilters = await this.prisma.filter.findMany({
-      where: { isActive: true, platforms: { has: Platform.EBAY } },
+      where: { isActive: true },
     });
     const listings = await this.prisma.listing.findMany({
-      where: { platform: Platform.EBAY },
       orderBy: { firstSeenAt: 'desc' },
       take: 500,
     });
@@ -79,13 +80,15 @@ export class MatcherService {
   }
 
   private async matchesFilter(listing: ListingRow, filter: FilterRow): Promise<boolean> {
+    if (!filter.platforms.includes(listing.platform)) return false;
+
     // Radius check supersedes city-name check when radiusKm is set
     if (filter.radiusKm != null) {
       const withinRadius = await this.isWithinRadius(listing, filter);
       if (!withinRadius) return false;
     } else {
       if (filter.city && listing.city) {
-        if (!normalizeCity(listing.city).includes(normalizeCity(filter.city))) return false;
+        if (normalizeCity(listing.city) !== normalizeCity(filter.city)) return false;
       }
     }
 
